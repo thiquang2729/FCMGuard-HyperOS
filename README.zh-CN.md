@@ -1,3 +1,6 @@
+> 本分支包含 FCMGuard 2.0。以下保留上游 1.5.9 文档。新版的 Shizuku 为可选增强功能，
+> Standard 模式不依赖 Shizuku。新版说明见 [英文 README](README.md) 和 [架构文档](docs/ARCHITECTURE.md)。
+
 <p align="center">
   <a href="README.md">English</a> · <a href="README.zh-CN.md"><strong>简体中文</strong></a>
 </p>

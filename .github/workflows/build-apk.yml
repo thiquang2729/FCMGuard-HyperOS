@@ -56,7 +56,7 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build debug APK
-        run: gradle :app:assembleDebug --stacktrace
+        run: gradle :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
 
       - name: Read version and prepare release APKs
         id: version

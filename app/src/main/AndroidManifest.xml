@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <!-- Optional provider is disabled below API 28; Standard remains compatible. -->
+    <uses-sdk tools:overrideLibrary="rikka.shizuku.api,rikka.shizuku.provider,rikka.shizuku.shared,rikka.shizuku.aidl" />
 
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <!-- Granted through the special-access Settings screen; legacy target is intentional. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -20,6 +24,8 @@
         </intent>
         <package android:name="com.google.android.gms" />
         <package android:name="com.miui.securitycenter" />
+        <package android:name="moe.shizuku.privileged.api" />
+        <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent>
     </queries>
 
     <application
@@ -29,6 +35,14 @@
         android:theme="@style/AppTheme"
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true">
+
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="@bool/shizuku_provider_enabled"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <!--
           FCM Guard intentionally targets SDK 22 so WRITE_SETTINGS can modify Xiaomi's
@@ -42,7 +56,7 @@
             android:value="3.0" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.DashboardActivity"
             android:exported="true"
             android:resizeableActivity="true"
             android:maxAspectRatio="3.0"
@@ -52,6 +66,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name=".MainActivity" android:exported="false"
+            android:resizeableActivity="true" android:maxAspectRatio="3.0"
+            android:configChanges="screenSize|orientation|keyboardHidden" />
 
         <service
             android:name=".GuardService"
