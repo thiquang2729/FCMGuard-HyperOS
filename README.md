@@ -6,17 +6,66 @@
   <img src="docs/icon.svg" width="180" alt="FCM Guard icon" />
 </p>
 
-# FCM Guard for HyperOS
+# FCMGuard 2.0 for HyperOS
 
-**A lightweight, no-root watchdog for HyperOS 3 China ROM that keeps Google Play services in Xiaomi's no-restrict background list so FCM push stays reliable.**
+**A no-root watchdog for HyperOS with verified GMS whitelist recovery, selected-app diagnostics and an optional Shizuku backend.**
 
 **Designed for:** China-market Xiaomi / Redmi / POCO phones with Google Play services already installed and working.
 
 <p align="center">
-  <a href="https://github.com/ReedGAOOO/FCMGuard-HyperOS/releases/latest/download/FCMGuard-HyperOS.apk"><strong>Download latest APK</strong></a>
+  <a href="https://github.com/ReedGAOOO/FCMGuard-HyperOS/releases/latest/download/FCMGuard-HyperOS.apk"><strong>Original upstream APK (1.5.9)</strong></a>
   ·
-  <a href="https://github.com/ReedGAOOO/FCMGuard-HyperOS/releases/latest">Latest release</a>
+  <a href="https://github.com/ReedGAOOO/FCMGuard-HyperOS/releases/latest">Original upstream releases</a>
 </p>
+
+## FCMGuard 2.0 fork
+
+This fork adds selected-app protection and safe automatic recovery while preserving the upstream
+GMS whitelist guard. **Standard Protection requires neither root nor Shizuku.** Optional Shizuku
+Enhanced Protection repairs only verified background AppOps for apps you explicitly select at MAXIMUM.
+
+- Native Home health dashboard, Protected Apps, App Detail, Diagnostics, Repair History and Settings.
+- Backend-independent RecoveryEngine, verify-after-repair, persisted cooldown and failure stop.
+- Exact ContentObserver + 400 ms debounce, network/package callbacks, existing non-waking 30-minute fallback.
+- Local selection (up to 64 apps), bounded history (100 records), no accounts/content/token/traffic collection.
+- Honest UNKNOWN/UNSUPPORTED states: a heartbeat request is not proof of an authenticated FCM connection.
+- Existing advanced configuration, locale/theme, autostart assistant and boot behavior retained.
+- compileSdk 35 / **targetSdk 22 preserved** for Xiaomi private WRITE_SETTINGS compatibility.
+
+### Setup
+
+1. Build/install this fork (upstream release links above are the original 1.5.9 app).
+2. Settings → Automatic protection / appearance / language → grant Modify system settings and enable protection.
+3. Enable Autostart and No restrictions for FCMGuard in HyperOS. Persistent notification is recommended.
+4. Add Protected Apps and choose NORMAL, STRONG or MAXIMUM. Run Full Check, then inspect app details.
+5. Optional: start Shizuku, opt into enhanced protection and grant permission. MAXIMUM falls back to STRONG
+   whenever Shizuku is unavailable. Vendor autostart/battery policies remain read-only/manual.
+
+Automatic repair does not guarantee notification delivery. Test real push latency on your device;
+app-specific processing, vendor restrictions, channels and the live MCS connection can remain unreadable.
+
+### Developer documentation
+
+- [Architecture and upstream audit](docs/ARCHITECTURE.md)
+- [Recovery decisions, limits and tests](docs/RECOVERY_ENGINE.md)
+- [Optional Shizuku scope and setup](docs/SHIZUKU.md)
+- [Protected Apps and levels](docs/PROTECTED_APPS.md)
+
+Build: JDK 17, Android SDK 35, Gradle 8.7.
+
+```sh
+python3 tools/check_layout_profiles.py
+gradle :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+```
+
+CI creates the configured debug signing key. For a local build, use the same `ci-signing` key path/alias
+as the workflow, or supply your own signing configuration. A fork key differs from upstream; installing
+over an upstream-signed app may require uninstalling first. New native feature screens currently use
+English labels; the retained advanced settings keep all upstream translations.
+
+## Original upstream documentation (1.5.9)
+
+The following describes the original Standard-only app and its upstream releases.
 
 ## Highlights
 

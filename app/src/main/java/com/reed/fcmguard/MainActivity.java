@@ -37,6 +37,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.List;
+import com.reed.fcmguard.core.ProtectionEngine;
 
 public class MainActivity extends Activity {
     private static final String[] LANGUAGE_CODES = {
@@ -278,7 +279,7 @@ public class MainActivity extends Activity {
 
             if (checked) {
                 SettingsGuard.saveConfig(this, keyEdit.getText().toString(), itemEdit.getText().toString());
-                if (!Settings.System.canWrite(this)) {
+                if (!SettingsGuard.canWrite(this)) {
                     SettingsGuard.setProtectionEnabled(this, false);
                     suppressSwitchCallbacks = true;
                     protectionSwitch.setChecked(false);
@@ -294,12 +295,11 @@ public class MainActivity extends Activity {
                     ensurePersistentNotificationAccess();
                 }
                 startProtectionService();
-                SettingsGuard.Result result = SettingsGuard.repair(this);
-                if (result.changed) FcmReconnect.kick(this);
+                ProtectionEngine.get(this).worker.execute(()->ProtectionEngine.get(this).check(true,false));
                 toast(getString(R.string.service_started));
             } else {
-                stopService(new Intent(this, GuardService.class));
                 SettingsGuard.setProtectionEnabled(this, false);
+                stopService(new Intent(this, GuardService.class));
                 toast(getString(R.string.service_stopped));
             }
             refreshStatus(null);
@@ -332,15 +332,19 @@ public class MainActivity extends Activity {
 
         findViewById(R.id.repairBtn).setOnClickListener(v -> {
             SettingsGuard.saveConfig(this, keyEdit.getText().toString(), itemEdit.getText().toString());
-            SettingsGuard.Result result = SettingsGuard.repair(this);
-            if (result.changed) FcmReconnect.kick(this);
-            refreshStatus(result.message);
+            ProtectionEngine engine=ProtectionEngine.get(this);
+            engine.worker.execute(()->{
+                ProtectionEngine.Snapshot snapshot=engine.check(true,false);
+                runOnUiThread(()->refreshStatus(snapshot.lastResult==null?null:snapshot.lastResult.message));
+            });
         });
 
         findViewById(R.id.wakeBtn).setOnClickListener(v -> {
-            FcmReconnect.kick(this);
-            toast(getString(R.string.wake_sent));
-            refreshStatus(getString(R.string.wake_sent));
+            ProtectionEngine engine=ProtectionEngine.get(this);
+            engine.worker.execute(()->{
+                com.reed.fcmguard.model.RepairResult result=engine.transport.reconnect(false,true);
+                runOnUiThread(()->{toast(result.message);refreshStatus(result.message);});
+            });
         });
 
         findViewById(R.id.diagBtn).setOnClickListener(v -> openFcmDiagnostics());
@@ -615,7 +619,7 @@ public class MainActivity extends Activity {
     }
 
     private void refreshStatus(String firstLine) {
-        boolean canWrite = Settings.System.canWrite(this);
+        boolean canWrite = SettingsGuard.canWrite(this);
         boolean enabled = SettingsGuard.isProtectionEnabled(this);
         boolean notification = SettingsGuard.usePersistentNotification(this);
         String current = SettingsGuard.read(this);
@@ -639,7 +643,7 @@ public class MainActivity extends Activity {
 
         SpannableStringBuilder status = new SpannableStringBuilder();
         if (firstLine != null && !firstLine.trim().isEmpty()) {
-            status.append("✓ ").append(firstLine).append("\n");
+            status.append(firstLine).append("\n");
         }
         appendStatusValueLine(
                 status,

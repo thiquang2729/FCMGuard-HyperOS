@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.provider.Settings;
 import java.util.LinkedHashSet;
+import com.reed.fcmguard.guard.Whitelist;
 import java.util.Set;
 
 public final class SettingsGuard {
@@ -58,8 +59,16 @@ public final class SettingsGuard {
         return t.isEmpty() ? fallback : t;
     }
 
+    public static boolean canWrite(Context context) {
+        try { return android.os.Build.VERSION.SDK_INT < 23
+                ? context.checkCallingOrSelfPermission(android.Manifest.permission.WRITE_SETTINGS)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED
+                : Settings.System.canWrite(context); }
+        catch (RuntimeException unavailable) { return false; }
+    }
     public static String read(Context context) {
-        return Settings.System.getString(context.getContentResolver(), getConfiguredKey(context));
+        try { return Settings.System.getString(context.getContentResolver(), getConfiguredKey(context)); }
+        catch (RuntimeException unavailable) { return null; }
     }
 
     public static boolean hasRequiredItem(Context context, String value) {
@@ -77,7 +86,7 @@ public final class SettingsGuard {
      * important because the common background path should be practically idle.
      */
     public static synchronized Result repair(Context context) {
-        if (!Settings.System.canWrite(context)) {
+        if (!canWrite(context)) {
             return new Result(false, false, read(context), context.getString(R.string.permission_missing));
         }
 
@@ -90,27 +99,17 @@ public final class SettingsGuard {
             return new Result(true, false, current, context.getString(R.string.already_protected));
         }
 
-        LinkedHashSet<String> packages = parse(current);
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        if (packages.isEmpty()) {
-            packages.addAll(parse(prefs.getString(LAST_GOOD_PREFIX + key, null)));
-        }
-        if (packages.isEmpty()) {
-            packages.add("com.tencent.mm");
-            packages.add("com.android.vending");
-        }
-        if (required != null && !required.trim().isEmpty()) {
-            packages.add(required.trim());
-        }
-
-        String repaired = join(packages);
+        String repaired = Whitelist.restore(current, prefs.getString(LAST_GOOD_PREFIX + key, null), required);
         try {
             boolean ok = Settings.System.putString(context.getContentResolver(), key, repaired);
-            if (ok) {
-                saveLastGoodIfChanged(prefs, key, repaired);
-                return new Result(true, true, repaired, context.getString(R.string.repaired));
+            String verified = read(context);
+            if (ok && hasRequiredItem(context, verified)
+                    && Whitelist.parse(verified).containsAll(Whitelist.parse(repaired))) {
+                saveLastGoodIfChanged(prefs, key, Whitelist.normalize(verified));
+                return new Result(true, true, verified, context.getString(R.string.repaired));
             }
-            return new Result(false, false, current, context.getString(R.string.write_rejected));
+            return new Result(false, false, read(context), context.getString(R.string.write_rejected));
         } catch (Throwable t) {
             return new Result(false, false, current,
                     context.getString(R.string.write_failed, t.getClass().getSimpleName()));
@@ -122,7 +121,7 @@ public final class SettingsGuard {
     }
 
     private static void rememberIfUseful(Context context, String current) {
-        if (current == null || current.trim().isEmpty()) return;
+        if (current == null || current.trim().isEmpty() || !hasRequiredItem(context, current)) return;
         String key = getConfiguredKey(context);
         LinkedHashSet<String> packages = parse(current);
         if (packages.isEmpty()) return;
